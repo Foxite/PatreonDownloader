@@ -15,7 +15,6 @@ namespace PatreonDownloader {
 
 			Console.Write("Paste session token: ");
 			string sessionToken = Console.ReadLine();
-
 			string backupFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "posts.json"); // Unfortunately, no SpecialFolder.Downloads.
 
 			var cookieContainer = new CookieContainer();
@@ -45,33 +44,51 @@ namespace PatreonDownloader {
 
 				switch (choice) {
 					case 1:
-						DownloadMedia(client, JsonConvert.DeserializeObject<List<PostPage>>(File.ReadAllText(backupFile)).SelectMany(page => page.Data));
+						DownloadMedia(client, list.SelectMany(page => page.Data), list.SelectMany(page => page.Included).ToDictionary(ppi => ppi.Id));
 						break;
 					case 2:
-						DownloadAllPosts(client, 0, nextUrl, sessionToken, backupFile);
+						File.Delete(backupFile);
+						DownloadAllPosts(client, 0, nextUrl, backupFile);
 						break;
 					case 3:
-						DownloadAllPosts(client, list.Count, list[^1].Links.Next, sessionToken, backupFile);
+						DownloadAllPosts(client, list.Count, list[^1].Links.Next, backupFile);
 						break;
 				}
 			} else {
 				Console.WriteLine("No local backup file exists. Downloading all post data to a local json file.");
-				DownloadAllPosts(client, 1, nextUrl, sessionToken, backupFile);
+				DownloadAllPosts(client, 1, nextUrl, backupFile);
 			}
 		}
 
-		private static void DownloadMedia(HttpClient client, IEnumerable<PostPageData> lists) {
+		private static void DownloadMedia(HttpClient client, IEnumerable<PostPageData> posts, IDictionary<int, PostPageIncluded> inclusions) {
+			foreach (PostPageData post in posts.Where(post => post.Attributes.PostType == "image_file")) {
+				// TODO extract links from post.Attributes.Content
+				IEnumerable <PostPageIncludedMedia> media = post.Relationships.Media.Data.Select(media => inclusions[media.Id].Attributes as PostPageIncludedMedia);
 
+				if (media.Any()) {
+					DirectoryInfo directory = Directory.CreateDirectory(Path.Combine(
+						Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+						"Posts",
+						post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + post.Attributes.Title
+					));
+					foreach (PostPageIncludedMedia item in media) {
+						using FileStream fileStream = File.Create(Path.Combine(directory.FullName, item.Filename));
+						using Stream downloadStream = client.GetStreamAsync(item.ImageUrls.Original).Result;
+						downloadStream.CopyTo(fileStream);
+					}
+				}
+			}
 		}
 
-		private static string DownloadAllPosts(HttpClient client, int initialCount, string nextUrl, string sessionToken, string backupFile) {
+		private static string DownloadAllPosts(HttpClient client, int initialCount, string nextUrl, string backupFile) {
 			List<PostPage> pages = new List<PostPage>();
 
 			int pageNumber = initialCount;
 			do {
 				Console.WriteLine($"Retrieving page {pageNumber++}.");
 
-				PostPage page = JsonConvert.DeserializeObject<PostPage>(client.GetStringAsync(nextUrl).Result);
+				string result = client.GetStringAsync(nextUrl).Result;
+				PostPage page = JsonConvert.DeserializeObject<PostPage>(result);
 				pages.Add(page);
 
 				File.WriteAllText(backupFile, JsonConvert.SerializeObject(pages));
