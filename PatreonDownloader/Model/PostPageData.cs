@@ -8,7 +8,7 @@ namespace PatreonDownloader {
 		public PostPageDataAttributes Attributes { get; set; }
 
 		[JsonProperty("id")]
-		public int Id { get; set; }
+		public string Id { get; set; }
 
 		[JsonProperty("relationships")]
 		public PostPageDataRelationships Relationships { get; set; }

@@ -47,10 +47,10 @@ namespace PatreonDownloader {
 	[Serializable]
 	public class PostPageIncludedPoll : PostPageIncludedAttributes {
 		[JsonProperty("closes_at")]
-		public DateTime ClosesAt { get; set; }
+		public DateTime? ClosesAt { get; set; }
 
 		[JsonProperty("created_at")]
-		public DateTime CreatedAt { get; set; }
+		public DateTime? CreatedAt { get; set; }
 
 		[JsonProperty("num_responses")]
 		public int ResponseCount { get; }
@@ -104,7 +104,7 @@ namespace PatreonDownloader {
 		public int AmountCents { get; }
 
 		[JsonProperty("created_at")]
-		public DateTime CreatedAt { get; set; }
+		public DateTime? CreatedAt { get; set; }
 		
 		[JsonProperty("description")]
 		public string Description { get; set; }
@@ -128,7 +128,7 @@ namespace PatreonDownloader {
 		public string[] DiscordRoleIds { get; set; }
 
 		[JsonProperty("edited_at")]
-		public DateTime EditedAt { get; set; }
+		public DateTime? EditedAt { get; set; }
 
 		[JsonProperty("image_url")]
 		public string ImageUrl { get; set; }
@@ -167,7 +167,7 @@ namespace PatreonDownloader {
 		public int CompletedPercentage { get; set; }
 
 		[JsonProperty("created_at")]
-		public DateTime CreatedAt { get; set; }
+		public DateTime? CreatedAt { get; set; }
 
 		[JsonProperty("currency")]
 		public Currency Currency { get; set; }
