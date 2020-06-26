@@ -44,7 +44,16 @@ namespace PatreonDownloader {
 
 				switch (choice) {
 					case 1:
-						DownloadMedia(client, list.SelectMany(page => page.Data), list.SelectMany(page => page.Included).ToDictionary(ppi => ppi.Id));
+						Dictionary<string, List<PostPageIncluded>> ppis = new Dictionary<string, List<PostPageIncluded>>();
+						foreach (PostPageIncluded item in list.SelectMany(page => page.Included)) {
+							if (ppis.TryGetValue(item.Id, out List<PostPageIncluded> ppiList)) {
+								ppiList.Add(item);
+							} else {
+								ppis[item.Id] = new List<PostPageIncluded>() { item };
+							}
+						}
+
+						DownloadMedia(client, list.SelectMany(page => page.Data), ppis);
 						break;
 					case 2:
 						File.Delete(backupFile);
@@ -60,24 +69,33 @@ namespace PatreonDownloader {
 			}
 		}
 
-		private static void DownloadMedia(HttpClient client, IEnumerable<PostPageData> posts, IDictionary<int, PostPageIncluded> inclusions) {
+		private static void DownloadMedia(HttpClient client, IEnumerable<PostPageData> posts, IDictionary<string, List<PostPageIncluded>> inclusions) {
+			int i = 1;
 			foreach (PostPageData post in posts.Where(post => post.Attributes.PostType == "image_file")) {
 				// TODO extract links from post.Attributes.Content
-				IEnumerable <PostPageIncludedMedia> media = post.Relationships.Media.Data.Select(media => inclusions[media.Id].Attributes as PostPageIncludedMedia);
+				IEnumerable<PostPageIncludedMedia> media = post.Relationships.Media.Data.SelectMany(media => inclusions[media.Id]).Select(media => media.Attributes).OfType<PostPageIncludedMedia>();
 
 				if (media.Any()) {
+					Console.WriteLine($"Downloading media of post {i}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
+
 					DirectoryInfo directory = Directory.CreateDirectory(Path.Combine(
 						Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
 						"Posts",
-						post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + post.Attributes.Title
+						post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + SanitizeFilename(post.Attributes.Title)
 					));
 					foreach (PostPageIncludedMedia item in media) {
-						using FileStream fileStream = File.Create(Path.Combine(directory.FullName, item.Filename));
-						using Stream downloadStream = client.GetStreamAsync(item.ImageUrls.Original).Result;
+						var response = client.GetAsync(item.ImageUrls.Original).Result;
+						// Using content disposition filename to work around some stupid bug that causes item.Filename to be null, and I can't figure out why.
+						using FileStream fileStream = File.Create(Path.Combine(directory.FullName, SanitizeFilename(response.Content.Headers.ContentDisposition.FileName[1..^1])));
+						using Stream downloadStream = response.Content.ReadAsStreamAsync().Result;
 						downloadStream.CopyTo(fileStream);
 					}
 				}
+
+				i++;
 			}
+			Console.WriteLine("Done.");
+			Console.ReadKey();
 		}
 
 		private static string DownloadAllPosts(HttpClient client, int initialCount, string nextUrl, string backupFile) {
@@ -101,6 +119,14 @@ namespace PatreonDownloader {
 			Console.WriteLine("Done, all post data has been saved locally.");
 			Console.ReadKey();
 			return nextUrl;
+		}
+
+		// https://stackoverflow.com/a/847251
+		private static string SanitizeFilename(string name) {
+			string invalidChars = System.Text.RegularExpressions.Regex.Escape(new string(Path.GetInvalidFileNameChars()));
+			string invalidRegStr = string.Format(@"([{0}]*\.+$)|([{0}]+)", invalidChars);
+
+			return System.Text.RegularExpressions.Regex.Replace(name, invalidRegStr, "_");
 		}
 	}
 }
