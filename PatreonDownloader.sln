@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30128.74
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PatreonDownloader", "PatreonDownloader\PatreonDownloader.csproj", "{FC563A01-0DFC-4621-9EC3-AD142302CD0A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FC563A01-0DFC-4621-9EC3-AD142302CD0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC563A01-0DFC-4621-9EC3-AD142302CD0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC563A01-0DFC-4621-9EC3-AD142302CD0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC563A01-0DFC-4621-9EC3-AD142302CD0A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CDE66B00-BC76-43EB-9DD9-E3E7590DFE6F}
+	EndGlobalSection
+EndGlobal
