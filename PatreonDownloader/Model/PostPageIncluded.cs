@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace PatreonDownloader {
-	[Serializable]
+	[Serializable, JsonObject(MemberSerialization = MemberSerialization.OptIn)]
 	public class PostPageIncluded {
 		[JsonProperty("attributes")]
 		public JObject RawAttributes { get; set; }
@@ -17,6 +17,7 @@ namespace PatreonDownloader {
 			IncludedType.Reward     => RawAttributes.ToObject<PostPageIncludedReward>(),
 			IncludedType.PollChoice => RawAttributes.ToObject<PostPageIncludedPollChoice>(),
 			IncludedType.Goal       => RawAttributes.ToObject<PostPageIncludedGoal>(),
+			IncludedType.Attachment => RawAttributes.ToObject<PostPageIncludedAttachment>(),
 			_ => throw new InvalidOperationException("This should not happen. PostPageIncluded.Type was " + Type.ToString())
 		};
 
@@ -29,6 +30,7 @@ namespace PatreonDownloader {
 		[JsonProperty("type")]
 		public IncludedType Type { get; set; }
 
+		[JsonConverter(typeof(CustomStringEnumConverter))]
 		public enum IncludedType {
 			[JsonProperty("access-rule")]
 			AccessRule,
@@ -36,7 +38,7 @@ namespace PatreonDownloader {
 			[JsonProperty("media")]
 			Media,
 
-			[JsonProperty("media")]
+			[JsonProperty("poll")]
 			Poll,
 
 			[JsonProperty("campaign")]
@@ -48,11 +50,14 @@ namespace PatreonDownloader {
 			[JsonProperty("reward")]
 			Reward,
 
-			[JsonProperty("poll-choice")]
+			[JsonProperty("poll_choice")]
 			PollChoice,
 
 			[JsonProperty("goal")]
 			Goal,
+
+			[JsonProperty("attachment")]
+			Attachment,
 		}
 	}
 }

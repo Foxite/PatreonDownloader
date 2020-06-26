@@ -55,7 +55,7 @@ namespace PatreonDownloader {
 		[JsonProperty("num_responses")]
 		public int ResponseCount { get; }
 
-		[JsonProperty("created_at")]
+		[JsonProperty("question_type")]
 		public string QuestionText { get; set; }
 
 		[JsonProperty("created_type")]
@@ -195,5 +195,14 @@ namespace PatreonDownloader {
 
 		[JsonProperty("text_content")]
 		public string TextContent { get; set; }
+	}
+
+	[Serializable]
+	public class PostPageIncludedAttachment : PostPageIncludedAttributes {
+		[JsonProperty("name")]
+		public string Name { get; set; }
+
+		[JsonProperty("url")]
+		public string Url { get; set; }
 	}
 }
