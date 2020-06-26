@@ -25,31 +25,38 @@ namespace PatreonDownloader {
 			client.DefaultRequestHeaders.Add("User-Agent", "PatreonDownloader 0.1");
 
 			if (File.Exists(backupFile)) {
+				List<PostPage> list = JsonConvert.DeserializeObject<List<PostPage>>(File.ReadAllText(backupFile));
+
 				Console.WriteLine("A backup file exists. Do you want to:");
-				Console.WriteLine("[1] Delete the backup file and download all post data");
-				Console.WriteLine("[2] Continue downloading post data where left off");
-				Console.WriteLine("[3] Download all images in the backup");
+				Console.WriteLine("[1] Download all images in the backup");
+				Console.WriteLine("[2] Delete the backup file and re-download all post data");
+
+				if (list[^1].Links != null) {
+					Console.WriteLine("[3] Continue downloading post data where left off");
+				} else {
+					Console.WriteLine("The local backup indicates that there are no more pages to download.");
+				}
+				Console.WriteLine("Re-downloading may be necessary if the backup is too old. Media URLs expire after a certain amount of time.");
 
 				int choice;
-				while (!(int.TryParse(Console.ReadLine(), out choice) && new[] { 1, 2, 3 }.Contains(choice))) {
+				while (!(int.TryParse(Console.ReadLine(), out choice) && choice >= 1 && choice <= (list[^1].Links != null ? 3 : 2))) {
 					Console.WriteLine("Enter the number of the option you want.");
 				}
 
-
 				switch (choice) {
 					case 1:
-						DownloadAllPosts(client, nextUrl, sessionToken, backupFile);
+						DownloadMedia(client, JsonConvert.DeserializeObject<List<PostPage>>(File.ReadAllText(backupFile)).SelectMany(page => page.Data));
 						break;
 					case 2:
-						DownloadAllPosts(client, JsonConvert.DeserializeObject<List<PostPage>>(File.ReadAllText(backupFile))[^1].Links.Next, sessionToken, backupFile);
+						DownloadAllPosts(client, 0, nextUrl, sessionToken, backupFile);
 						break;
 					case 3:
-						DownloadMedia(client, JsonConvert.DeserializeObject<List<PostPage>>(File.ReadAllText(backupFile)).SelectMany(page => page.Data));
+						DownloadAllPosts(client, list.Count, list[^1].Links.Next, sessionToken, backupFile);
 						break;
 				}
 			} else {
 				Console.WriteLine("No local backup file exists. Downloading all post data to a local json file.");
-				DownloadAllPosts(client, nextUrl, sessionToken, backupFile);
+				DownloadAllPosts(client, 1, nextUrl, sessionToken, backupFile);
 			}
 		}
 
@@ -57,10 +64,10 @@ namespace PatreonDownloader {
 
 		}
 
-		private static string DownloadAllPosts(HttpClient client, string nextUrl, string sessionToken, string backupFile) {
+		private static string DownloadAllPosts(HttpClient client, int initialCount, string nextUrl, string sessionToken, string backupFile) {
 			List<PostPage> pages = new List<PostPage>();
 
-			int pageNumber = 1;
+			int pageNumber = initialCount;
 			do {
 				Console.WriteLine($"Retrieving page {pageNumber++}.");
 
