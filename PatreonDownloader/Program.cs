@@ -77,28 +77,19 @@ namespace PatreonDownloader {
 
 					switch (choice) {
 						case 0:
-							Dictionary<string, List<PostPageIncluded>> ppis = new Dictionary<string, List<PostPageIncluded>>();
-							foreach (PostPageIncluded item in list.SelectMany(page => page.Included)) {
-								if (ppis.TryGetValue(item.Id, out List<PostPageIncluded> ppiList)) {
-									ppiList.Add(item);
-								} else {
-									ppis[item.Id] = new List<PostPageIncluded>() { item };
-								}
-							}
-
-							DownloadMedia(client, cookieContainer, list.SelectMany(page => page.Data), ppis);
+							DownloadMedia(client, cookieContainer, list);
 							break;
 						case 1:
 							File.Delete(backupFile);
-							DownloadAllPosts(client, 1, null, backupFile);
+							DownloadAllPosts(client, null, backupFile);
 							break;
 						case 2:
-							DownloadAllPosts(client, list.Count, list[^1].Links.Next, backupFile);
+							DownloadAllPosts(client, list, backupFile);
 							break;
 					}
 				} else {
 					Console.WriteLine("No local backup file exists. Downloading all post data to a local json file.");
-					DownloadAllPosts(client, 1, null, backupFile);
+					DownloadAllPosts(client, null, backupFile);
 				}
 			}
 #if !DEBUG
@@ -112,13 +103,22 @@ namespace PatreonDownloader {
 			}
 		}
 
-		private static void DownloadMedia(HttpClient client, CookieContainer cookies, IEnumerable<PostPageData> posts, IDictionary<string, List<PostPageIncluded>> inclusions) {
+		private static void DownloadMedia(HttpClient client, CookieContainer cookies, List<PostPage> posts) {
+			Dictionary<string, List<PostPageIncluded>> inclusions = new Dictionary<string, List<PostPageIncluded>>();
+			foreach (PostPageIncluded item in posts.SelectMany(page => page.Included)) {
+				if (inclusions.TryGetValue(item.Id, out List<PostPageIncluded> ppiList)) {
+					ppiList.Add(item);
+				} else {
+					inclusions[item.Id] = new List<PostPageIncluded>() { item };
+				}
+			}
+
 			LinkDownloader[] downloaders = new LinkDownloader[] {
 				new DropboxDownloader()
 			};
 
 			int postI = 1;
-			foreach (PostPageData post in posts.Where(post => post.Attributes.PostType == "image_file")) {
+			foreach (PostPageData post in posts.SelectMany(page => page.Data).Where(post => post.Attributes.PostType == "image_file")) {
 				DirectoryInfo directory = null;
 
 				#region Media downloading
@@ -159,7 +159,11 @@ namespace PatreonDownloader {
 						"Posts",
 						post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)
 					));
-					downloader.DownloadFiles(client, cookies, url, directory.FullName);
+					try {
+						downloader.DownloadFiles(client, cookies, url, directory.FullName);
+					} catch (LinkDownloaderException e) {
+						Console.WriteLine("Error: " + e.Message);
+					}
 				}
 				#endregion
 
@@ -173,20 +177,24 @@ namespace PatreonDownloader {
 			Console.WriteLine("Done.");
 		}
 
-		private static void DownloadAllPosts(HttpClient client, int initialCount, string nextUrl, string backupFile) {
-			if (nextUrl == null) {
+		private static void DownloadAllPosts(HttpClient client, List<PostPage> pages, string backupFile) {
+			string nextUrl;
+			if (pages == null) {
 				Console.Write("Paste URL of posts call: ");
 				nextUrl = Console.ReadLine();
+				pages = new List<PostPage>();
+			} else {
+				nextUrl = pages[^1].Links.Next;
 			}
 
-			List<PostPage> pages = new List<PostPage>();
+			int pageNumber = pages.Count + 1;
 
-			int pageNumber = initialCount;
 			do {
 				Console.WriteLine($"Retrieving page {pageNumber++}.");
 
 				string result = client.GetStringAsync(nextUrl).Result;
 				PostPage page = JsonConvert.DeserializeObject<PostPage>(result);
+
 				pages.Add(page);
 
 				File.WriteAllText(backupFile, JsonConvert.SerializeObject(pages));
