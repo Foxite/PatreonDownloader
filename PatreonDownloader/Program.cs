@@ -11,6 +11,8 @@ using PatreonDownloader.LinkScraping;
 
 namespace PatreonDownloader {
 	public class Program {
+		private static string s_DataFolder;
+
 		private static void Main(string[] args) {
 			Console.Write("Paste URL of posts call: ");
 			string nextUrl = Console.ReadLine();
@@ -18,7 +20,9 @@ namespace PatreonDownloader {
 			Console.Write("Paste session token: ");
 			string sessionToken = Console.ReadLine();
 
-			string backupFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "posts.json"); // Unfortunately, no SpecialFolder.Downloads.
+			s_DataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PatreonDownloader");
+
+			string backupFile = Path.Combine(s_DataFolder, "posts.json"); // Unfortunately, no SpecialFolder.Downloads.
 
 			var cookieContainer = new CookieContainer();
 			cookieContainer.Add(new Uri("https://www.patreon.com"), new Cookie("session_id", sessionToken));
@@ -88,11 +92,7 @@ namespace PatreonDownloader {
 				if (media.Any()) {
 					Console.WriteLine($"Downloading media of post {postI}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
 
-					directory = Directory.CreateDirectory(Path.Combine(
-						Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-						"Posts",
-						post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)
-					));
+					directory = Directory.CreateDirectory(Path.Combine(s_DataFolder, post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)));
 
 					foreach (PostPageIncludedMedia item in media) {
 						var response = client.GetAsync(item.ImageUrls.Original).Result;
@@ -158,7 +158,7 @@ namespace PatreonDownloader {
 				Thread.Sleep(TimeSpan.FromSeconds(10));
 			} while (nextUrl != null);
 
-			Console.WriteLine("Done, all post data has been saved locally.");
+			Console.WriteLine("Done, all post data has been saved locally. Run the program again to download the media.");
 			Console.ReadKey();
 			return nextUrl;
 		}
