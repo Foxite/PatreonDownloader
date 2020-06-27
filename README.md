@@ -3,6 +3,8 @@ A simple command line tool that downloads all media from a Patreon campaign.
 
 It's not exactly easy to use, but it's explained below.
 
+Go [here](https://github.com/Foxite/PatreonDownloader/releases) to download a build.
+
 ## Usage
 The program needs two pieces of information:
 
