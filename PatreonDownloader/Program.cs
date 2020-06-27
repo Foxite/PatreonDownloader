@@ -18,26 +18,22 @@ namespace PatreonDownloader {
 			string sessionToken;
 
 			CookieExtractor[] cookieExtractors = new CookieExtractor[] {
-				new ChromeCookieExtractor()
+				new ChromeCookieExtractor(),
+				new FirefoxCookieExtractor()
 			};
 
-			Console.WriteLine("Enter an option:");
-			Console.WriteLine("[1] Manually enter/paste session token");
-
+			string[] options = new string[cookieExtractors.Length + 1];
+			options[0] = "Manually enter/paste session token";
 			for (int i = 0; i < cookieExtractors.Length; i++) {
-				Console.WriteLine($"[{i + 2}] Acquire session token from {cookieExtractors[i].Name}");
+				options[i + 1] = $"Acquire session token from {cookieExtractors[i].Name}";
 			}
-
-			int choice;
-			while (!(int.TryParse(Console.ReadLine(), out choice) && choice >= 1 && choice <= cookieExtractors.Length + 2)) {
-				Console.WriteLine("Enter the number of the option you want.");
-			}
+			int choice = Util.ConsoleChoiceMenu("Enter an option:", options);
 			
-			if (choice == 1) {
+			if (choice == 0) {
 				Console.Write("Enter/Paste session token: ");
 				sessionToken = Console.ReadLine();
 			} else {
-				sessionToken = cookieExtractors[choice - 2].GetPatreonSessionToken();
+				sessionToken = cookieExtractors[choice - 1].GetPatreonSessionToken();
 			}
 
 			s_DataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PatreonDownloader");
@@ -55,23 +51,26 @@ namespace PatreonDownloader {
 			if (File.Exists(backupFile)) {
 				List<PostPage> list = JsonConvert.DeserializeObject<List<PostPage>>(File.ReadAllText(backupFile));
 
-				Console.WriteLine("A backup file exists. Do you want to:");
-				Console.WriteLine("[1] Download all images in the backup");
-				Console.WriteLine("[2] Delete the backup file and re-download all post data");
+				string question = "A backup file exists.";
 
 				if (list[^1].Links != null) {
-					Console.WriteLine("[3] Continue downloading post data where left off");
+					options = new string[3];
+					options[2] = "Continue downloading post data where left off";
 				} else {
-					Console.WriteLine("The local backup indicates that there are no more pages to download.");
+					options = new string[2];
+					question += " The local backup indicates that there are no more pages to download.";
 				}
-				Console.WriteLine("Re-downloading may be necessary if the backup is too old. Media URLs expire after a certain amount of time.");
 
-				while (!(int.TryParse(Console.ReadLine(), out choice) && choice >= 1 && choice <= (list[^1].Links != null ? 3 : 2))) {
-					Console.WriteLine("Enter the number of the option you want.");
-				}
+				question += "\nRe-downloading may be necessary if the backup is too old. Media URLs expire after a certain amount of time.";
+				question += "\nDo you want to:";
+
+				options[0] = "Download all images in the backup";
+				options[1] = "Delete the backup file and re-download all post data";
+
+				choice = Util.ConsoleChoiceMenu(question, options);
 
 				switch (choice) {
-					case 1:
+					case 0:
 						Dictionary<string, List<PostPageIncluded>> ppis = new Dictionary<string, List<PostPageIncluded>>();
 						foreach (PostPageIncluded item in list.SelectMany(page => page.Included)) {
 							if (ppis.TryGetValue(item.Id, out List<PostPageIncluded> ppiList)) {
@@ -83,11 +82,11 @@ namespace PatreonDownloader {
 
 						DownloadMedia(client, cookieContainer, list.SelectMany(page => page.Data), ppis);
 						break;
-					case 2:
+					case 1:
 						File.Delete(backupFile);
 						DownloadAllPosts(client, 0, null, backupFile);
 						break;
-					case 3:
+					case 2:
 						DownloadAllPosts(client, list.Count, list[^1].Links.Next, backupFile);
 						break;
 				}
