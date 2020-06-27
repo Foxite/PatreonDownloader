@@ -4,18 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text.RegularExpressions;
 
 namespace PatreonDownloader.LinkScraping {
 	public class DropboxDownloader : LinkDownloader {
-		private readonly Regex m_NonceRegex;
 		private string m_Nonce;
 
 		public override string Name => "Dropbox";
-
-		public DropboxDownloader() {
-			m_NonceRegex = new Regex(@"{""CSP_SCRIPT_NONCE"": ""([A-z0-9\/\+]+)""}", RegexOptions.Compiled);
-		}
 
 		public override bool CanDownloadLink(string url) {
 			string authority = new Uri(url).Authority;
