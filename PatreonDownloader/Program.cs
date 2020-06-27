@@ -5,7 +5,9 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
+using HtmlAgilityPack;
 using Newtonsoft.Json;
+using PatreonDownloader.LinkScraping;
 
 namespace PatreonDownloader {
 	public class Program {
@@ -15,13 +17,14 @@ namespace PatreonDownloader {
 
 			Console.Write("Paste session token: ");
 			string sessionToken = Console.ReadLine();
+
 			string backupFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "posts.json"); // Unfortunately, no SpecialFolder.Downloads.
 
 			var cookieContainer = new CookieContainer();
 			cookieContainer.Add(new Uri("https://www.patreon.com"), new Cookie("session_id", sessionToken));
 			using var handler = new HttpClientHandler() { CookieContainer = cookieContainer };
 			using var client = new HttpClient(handler);
-			client.DefaultRequestHeaders.Add("User-Agent", "PatreonDownloader 0.1");
+			client.DefaultRequestHeaders.Add("User-Agent", "PatreonDownloader 0.2");
 
 			if (File.Exists(backupFile)) {
 				List<PostPage> list = JsonConvert.DeserializeObject<List<PostPage>>(File.ReadAllText(backupFile));
@@ -53,7 +56,7 @@ namespace PatreonDownloader {
 							}
 						}
 
-						DownloadMedia(client, list.SelectMany(page => page.Data), ppis);
+						DownloadMedia(client, cookieContainer, list.SelectMany(page => page.Data), ppis);
 						break;
 					case 2:
 						File.Delete(backupFile);
@@ -69,31 +72,70 @@ namespace PatreonDownloader {
 			}
 		}
 
-		private static void DownloadMedia(HttpClient client, IEnumerable<PostPageData> posts, IDictionary<string, List<PostPageIncluded>> inclusions) {
-			int i = 1;
+		private static void DownloadMedia(HttpClient client, CookieContainer cookies, IEnumerable<PostPageData> posts, IDictionary<string, List<PostPageIncluded>> inclusions) {
+			LinkDownloader[] downloaders = new[] {
+				new DropboxDownloader()
+				// Add more downloaders here
+			};
+
+			int postI = 1;
 			foreach (PostPageData post in posts.Where(post => post.Attributes.PostType == "image_file")) {
-				// TODO extract links from post.Attributes.Content
+				DirectoryInfo directory = null;
+
+				#region Media downloading
 				IEnumerable<PostPageIncludedMedia> media = post.Relationships.Media.Data.SelectMany(media => inclusions[media.Id]).Select(media => media.Attributes).OfType<PostPageIncludedMedia>();
 
 				if (media.Any()) {
-					Console.WriteLine($"Downloading media of post {i}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
+					Console.WriteLine($"Downloading media of post {postI}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
 
-					DirectoryInfo directory = Directory.CreateDirectory(Path.Combine(
+					directory = Directory.CreateDirectory(Path.Combine(
 						Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
 						"Posts",
-						post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + SanitizeFilename(post.Attributes.Title)
+						post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)
 					));
+
 					foreach (PostPageIncludedMedia item in media) {
 						var response = client.GetAsync(item.ImageUrls.Original).Result;
 						// Using content disposition filename to work around some stupid bug that causes item.Filename to be null, and I can't figure out why.
-						using FileStream fileStream = File.Create(Path.Combine(directory.FullName, SanitizeFilename(response.Content.Headers.ContentDisposition.FileName[1..^1])));
+						using FileStream fileStream = File.Create(Path.Combine(directory.FullName, Util.SanitizeFilename(response.Content.Headers.ContentDisposition.FileName[1..^1])));
 						using Stream downloadStream = response.Content.ReadAsStreamAsync().Result;
 						downloadStream.CopyTo(fileStream);
 					}
 				}
+				#endregion
 
-				i++;
+				#region Link scraping & downloading
+				HtmlDocument contentHtml = new HtmlDocument();
+				contentHtml.LoadHtml(post.Attributes.Content);
+
+				int linkI = 1;
+				string title = post.Attributes.Title;
+				foreach (var (url, downloader) in
+					from node in contentHtml.DocumentNode.Descendants()
+					where node.Name == "a"
+					let href = node.Attributes.FirstOrDefault(attr => attr.Name == "href")?.Value
+					where href != null
+					let downloader = downloaders.FirstOrDefault(dl => dl.CanDownloadLink(href))
+					where downloader != null
+					select (href, downloader)
+				) {
+					Console.WriteLine($"Downloading link {linkI++} ({downloader.Name}) extracted from post {postI}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
+					directory ??= Directory.CreateDirectory(Path.Combine(
+						Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+						"Posts",
+						post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)
+					));
+					downloader.DownloadFiles(client, cookies, url, directory.FullName);
+				}
+				#endregion
+
+				postI++;
 			}
+
+			foreach (IDisposable downloader in downloaders.OfType<IDisposable>()) {
+				downloader.Dispose();
+			}
+
 			Console.WriteLine("Done.");
 			Console.ReadKey();
 		}
@@ -119,14 +161,6 @@ namespace PatreonDownloader {
 			Console.WriteLine("Done, all post data has been saved locally.");
 			Console.ReadKey();
 			return nextUrl;
-		}
-
-		// https://stackoverflow.com/a/847251
-		private static string SanitizeFilename(string name) {
-			string invalidChars = System.Text.RegularExpressions.Regex.Escape(new string(Path.GetInvalidFileNameChars()));
-			string invalidRegStr = string.Format(@"([{0}]*\.+$)|([{0}]+)", invalidChars);
-
-			return System.Text.RegularExpressions.Regex.Replace(name, invalidRegStr, "_");
 		}
 	}
 }
