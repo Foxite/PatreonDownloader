@@ -7,6 +7,7 @@ using System.Net.Http;
 using System.Threading;
 using HtmlAgilityPack;
 using Newtonsoft.Json;
+using PatreonDownloader.CookieExtraction;
 using PatreonDownloader.LinkScraping;
 
 namespace PatreonDownloader {
@@ -14,11 +15,33 @@ namespace PatreonDownloader {
 		private static string s_DataFolder;
 
 		private static void Main(string[] args) {
+			string sessionToken;
+
+			CookieExtractor[] cookieExtractors = new CookieExtractor[] {
+				new ChromeCookieExtractor()
+			};
+
+			Console.WriteLine("Enter an option:");
+			Console.WriteLine("[1] Manually enter/paste session token");
+
+			for (int i = 0; i < cookieExtractors.Length; i++) {
+				Console.WriteLine($"[{i + 2}] Acquire session token from {cookieExtractors[i].Name}");
+			}
+
+			int choice;
+			while (!(int.TryParse(Console.ReadLine(), out choice) && choice >= 1 && choice <= cookieExtractors.Length + 2)) {
+				Console.WriteLine("Enter the number of the option you want.");
+			}
+			
+			if (choice == 1) {
+				Console.Write("Enter/Paste session token: ");
+				sessionToken = Console.ReadLine();
+			} else {
+				sessionToken = cookieExtractors[choice - 2].GetPatreonSessionToken();
+			}
+
 			Console.Write("Paste URL of posts call: ");
 			string nextUrl = Console.ReadLine();
-
-			Console.Write("Paste session token: ");
-			string sessionToken = Console.ReadLine();
 
 			s_DataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PatreonDownloader");
 
@@ -28,7 +51,9 @@ namespace PatreonDownloader {
 			cookieContainer.Add(new Uri("https://www.patreon.com"), new Cookie("session_id", sessionToken));
 			using var handler = new HttpClientHandler() { CookieContainer = cookieContainer };
 			using var client = new HttpClient(handler);
-			client.DefaultRequestHeaders.Add("User-Agent", "PatreonDownloader 0.2");
+			client.DefaultRequestHeaders.Add("User-Agent", "PatreonDownloader 0.3");
+
+			Directory.CreateDirectory(s_DataFolder);
 
 			if (File.Exists(backupFile)) {
 				List<PostPage> list = JsonConvert.DeserializeObject<List<PostPage>>(File.ReadAllText(backupFile));
@@ -44,7 +69,6 @@ namespace PatreonDownloader {
 				}
 				Console.WriteLine("Re-downloading may be necessary if the backup is too old. Media URLs expire after a certain amount of time.");
 
-				int choice;
 				while (!(int.TryParse(Console.ReadLine(), out choice) && choice >= 1 && choice <= (list[^1].Links != null ? 3 : 2))) {
 					Console.WriteLine("Enter the number of the option you want.");
 				}
