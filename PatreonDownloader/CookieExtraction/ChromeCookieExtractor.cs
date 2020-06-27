@@ -33,7 +33,7 @@ namespace PatreonDownloader.CookieExtraction {
 			using SqliteDataReader reader = command.ExecuteReader();
 			if (reader.Read()) {
 				byte[] encryptedData = (byte[]) reader.GetValue(0);
-                string base64key = JObject.Parse(File.ReadAllText(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "User Data", "Local State")))["os_crypt"]["encrypted_key"].ToObject<string>();
+				string base64key = JObject.Parse(File.ReadAllText(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "User Data", "Local State")))["os_crypt"]["encrypted_key"].ToObject<string>();
 				byte[] key = ProtectedData.Unprotect(Convert.FromBase64String(base64key).Skip(5).ToArray(), null, DataProtectionScope.LocalMachine);
 				return DecryptWithKey(encryptedData, key, 3);
 			}
@@ -41,16 +41,16 @@ namespace PatreonDownloader.CookieExtraction {
 			throw new CookieExtractorException("No suitable cookie was found in Chrome's storage.");
 		}
 
-        // https://stackoverflow.com/a/60611673
-        private string DecryptWithKey(byte[] message, byte[] key, int nonSecretPayloadLength) {
-            const int KEY_BIT_SIZE = 256;
-            const int MAC_BIT_SIZE = 128;
-            const int NONCE_BIT_SIZE = 96;
+		// https://stackoverflow.com/a/60611673
+		private string DecryptWithKey(byte[] message, byte[] key, int nonSecretPayloadLength) {
+			const int KEY_BIT_SIZE = 256;
+			const int MAC_BIT_SIZE = 128;
+			const int NONCE_BIT_SIZE = 96;
 
-            if (key == null || key.Length != KEY_BIT_SIZE / 8)
-                throw new ArgumentException(String.Format("Key needs to be {0} bit!", KEY_BIT_SIZE), "key");
-            if (message == null || message.Length == 0)
-                throw new ArgumentException("Message required!", "message");
+			if (key == null || key.Length != KEY_BIT_SIZE / 8)
+				throw new ArgumentException($"Key needs to be {KEY_BIT_SIZE} bit!", "key");
+			if (message == null || message.Length == 0)
+				throw new ArgumentException("Message required!", "message");
 
 			using var cipherStream = new MemoryStream(message);
 			using var cipherReader = new BinaryReader(cipherStream);
@@ -70,5 +70,5 @@ namespace PatreonDownloader.CookieExtraction {
 			}
 			return Encoding.Default.GetString(plainText);
 		}
-    }
+	}
 }
