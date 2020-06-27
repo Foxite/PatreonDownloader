@@ -131,7 +131,7 @@ namespace PatreonDownloader {
 
 					foreach (PostPageIncludedMedia item in media) {
 						var response = client.GetAsync(item.ImageUrls.Original).Result;
-						using FileStream fileStream = File.Create(Path.Combine(directory.FullName, Util.SanitizeFilename(item.Filename)));
+						using FileStream fileStream = File.Create(Path.Combine(directory.FullName, Util.SanitizeFilename(item.Filename ?? Path.GetFileName(new Uri(item.DownloadUrl).GetLeftPart(UriPartial.Path)))));
 						using Stream downloadStream = response.Content.ReadAsStreamAsync().Result;
 						downloadStream.CopyTo(fileStream);
 					}
