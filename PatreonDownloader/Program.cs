@@ -90,7 +90,7 @@ namespace PatreonDownloader {
 							break;
 						case 1:
 							File.Delete(backupFile);
-							DownloadAllPosts(client, 0, null, backupFile);
+							DownloadAllPosts(client, 1, null, backupFile);
 							break;
 						case 2:
 							DownloadAllPosts(client, list.Count, list[^1].Links.Next, backupFile);
