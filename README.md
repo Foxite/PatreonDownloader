@@ -30,6 +30,6 @@ The program will also attempt to extract links from posts, and if possible, down
 ## Contributing
 Please stick to existing code conventions when contributing.
 
-To add support for additional external hosting sites, look in [LinkScraping](https://github.com/Foxite/PatreonDownloader/blob/master/PatreonDownloader/LinkScraping/) to see how it works. When you have a working downloader, add it [here](https://github.com/Foxite/PatreonDownloader/blob/master/PatreonDownloader/Program.cs#L110).
+To add support for additional external hosting sites, look in [LinkScraping](https://github.com/Foxite/PatreonDownloader/blob/master/PatreonDownloader/LinkScraping/) to see how it works. When you have a working downloader, add it to the array in Program.DownloadMedia().
 
-To add support for additional browsers to extract cookies from, look in [CookieExtraction](https://github.com/Foxite/PatreonDownloader/tree/master/PatreonDownloader/CookieExtraction) to see how it works. When you have a working extractor, add it [here](https://github.com/Foxite/PatreonDownloader/blob/master/PatreonDownloader/Program.cs#L20).
+To add support for additional browsers to extract cookies from, look in [CookieExtraction](https://github.com/Foxite/PatreonDownloader/tree/master/PatreonDownloader/CookieExtraction) to see how it works. When you have a working extractor, add it to the array in Program.Main().
