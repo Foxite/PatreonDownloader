@@ -40,9 +40,6 @@ namespace PatreonDownloader {
 				sessionToken = cookieExtractors[choice - 2].GetPatreonSessionToken();
 			}
 
-			Console.Write("Paste URL of posts call: ");
-			string nextUrl = Console.ReadLine();
-
 			s_DataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PatreonDownloader");
 
 			string backupFile = Path.Combine(s_DataFolder, "posts.json"); // Unfortunately, no SpecialFolder.Downloads.
@@ -88,7 +85,7 @@ namespace PatreonDownloader {
 						break;
 					case 2:
 						File.Delete(backupFile);
-						DownloadAllPosts(client, 0, nextUrl, backupFile);
+						DownloadAllPosts(client, 0, null, backupFile);
 						break;
 					case 3:
 						DownloadAllPosts(client, list.Count, list[^1].Links.Next, backupFile);
@@ -96,7 +93,7 @@ namespace PatreonDownloader {
 				}
 			} else {
 				Console.WriteLine("No local backup file exists. Downloading all post data to a local json file.");
-				DownloadAllPosts(client, 1, nextUrl, backupFile);
+				DownloadAllPosts(client, 1, null, backupFile);
 			}
 		}
 
@@ -165,6 +162,11 @@ namespace PatreonDownloader {
 		}
 
 		private static string DownloadAllPosts(HttpClient client, int initialCount, string nextUrl, string backupFile) {
+			if (nextUrl == null) {
+				Console.Write("Paste URL of posts call: ");
+				nextUrl = Console.ReadLine();
+			}
+
 			List<PostPage> pages = new List<PostPage>();
 
 			int pageNumber = initialCount;
