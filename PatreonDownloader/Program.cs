@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -117,8 +118,27 @@ namespace PatreonDownloader {
 				new DropboxDownloader()
 			};
 
+			Console.WriteLine("If you want to download ALL saved media, press enter. Otherwise, enter the YYYY-MM-DD of the date that you want to resume downloading from. (Media is downloaded in reverse order of submitting.)");
+			DateTime? skipAfter = null;
+			bool @continue = false;
+			while (!@continue) {
+				string ymd = Console.ReadLine();
+				if (string.IsNullOrWhiteSpace(ymd)) {
+					@continue = true;
+				} else if (DateTime.TryParseExact(ymd, "yyyy-MM-dd", null, DateTimeStyles.None, out DateTime result)) {
+					skipAfter = result;
+					@continue = true;
+				} else {
+					Console.WriteLine("Please press enter, or enter the date in YYYY-MM-DD.");
+				}
+			}
+
 			int postI = 1;
 			foreach (PostPageData post in posts.SelectMany(page => page.Data).Where(post => post.Attributes.PostType == "image_file")) {
+				if (skipAfter.HasValue && post.Attributes.PublishedAt > skipAfter) {
+					postI++;
+					continue;
+				}
 				DirectoryInfo directory = null;
 
 				#region Media downloading
