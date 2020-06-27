@@ -109,7 +109,6 @@ namespace PatreonDownloader {
 		private static void DownloadMedia(HttpClient client, CookieContainer cookies, IEnumerable<PostPageData> posts, IDictionary<string, List<PostPageIncluded>> inclusions) {
 			LinkDownloader[] downloaders = new[] {
 				new DropboxDownloader()
-				// Add more downloaders here
 			};
 
 			int postI = 1;

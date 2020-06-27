@@ -9,14 +9,14 @@ Go [here](https://github.com/Foxite/PatreonDownloader/releases) to download a bu
 The program needs two pieces of information:
 
 - The link to the /api/posts page for the creator you want to download the content of. This tells the program where to look for posts.
-- Your session token. This allows the program to download everything you have access to.
+- Your session token. This allows the program to download everything you have access to. The program can automatically extract this cookie from supported browsers, or you may enter it yourself.
 
 **Do not take this lightly.** Your session token can be used to gain full access to your account. As such, I encourage healthy paranoia when using this program, which is why the full source code is available.
 
 To actually get the information:
 
-- Go to patreon.com and visit the posts page of the creator. Using your browser's developer tools (press F12 in most browsers), open the network inspector, and refresh the page. You will see it loading several dozen pages. Find the one that starts with "posts?". The question mark is important. Depending on your browser, it may also start with "/api/posts?". The full page address + query will be quite long. This is the string we need first.
-- Also on patreon.com, on any page, get the value of the cookie named "session_id". This differs per browser, but for Chromium-based browsers it can be done by clicking on the HTTPS icon next to the page address. On Firefox, you need to view the Storage inspector in your F12 menu.
+- Link to /api/posts: Go to patreon.com and visit the posts page of the creator. Using your browser's developer tools (press F12 in most browsers), open the network inspector, and refresh the page. You will see it loading several dozen pages. Find the one that starts with "posts?". The question mark is important. Depending on your browser, it may also start with "/api/posts?". The full page address + query will be quite long. This is the string we need first.
+- Session token, if you opt to enter it yourself: Also on patreon.com, on any page, get the value of the cookie named "session_id". This differs per browser, but for Chromium-based browsers it can be done by clicking on the HTTPS icon next to the page address. On Firefox, you need to view the Storage inspector in your F12 menu.
 
 Once you have the information you can start the program, and give it the information.
 
@@ -30,4 +30,6 @@ The program will also attempt to extract links from posts, and if possible, down
 ## Contributing
 Please stick to existing code conventions when contributing.
 
-To add support for additional external hosting sites, feel free to look at [LinkDownloader.cs](https://github.com/Foxite/PatreonDownloader/blob/master/PatreonDownloader/LinkScraping/LinkDownloader.cs) and [DropboxDownloader.cs](https://github.com/Foxite/PatreonDownloader/blob/master/PatreonDownloader/LinkScraping/DropboxDownloader.cs) to see how it works. When you have a working downloader, add it [here](https://github.com/Foxite/PatreonDownloader/blob/master/PatreonDownloader/Program.cs#L82).
+To add support for additional external hosting sites, look in [LinkScraping](https://github.com/Foxite/PatreonDownloader/blob/master/PatreonDownloader/LinkScraping/) to see how it works. When you have a working downloader, add it [here](https://github.com/Foxite/PatreonDownloader/blob/master/PatreonDownloader/Program.cs#L110).
+
+To add support for additional browsers to extract cookies from, look in [CookieExtraction](https://github.com/Foxite/PatreonDownloader/tree/master/PatreonDownloader/CookieExtraction) to see how it works. When you have a working extractor, add it [here](https://github.com/Foxite/PatreonDownloader/blob/master/PatreonDownloader/Program.cs#L20).
