@@ -131,8 +131,7 @@ namespace PatreonDownloader {
 
 					foreach (PostPageIncludedMedia item in media) {
 						var response = client.GetAsync(item.ImageUrls.Original).Result;
-						// Using content disposition filename to work around some stupid bug that causes item.Filename to be null, and I can't figure out why.
-						using FileStream fileStream = File.Create(Path.Combine(directory.FullName, Util.SanitizeFilename(response.Content.Headers.ContentDisposition.FileName[1..^1])));
+						using FileStream fileStream = File.Create(Path.Combine(directory.FullName, Util.SanitizeFilename(item.Filename)));
 						using Stream downloadStream = response.Content.ReadAsStreamAsync().Result;
 						downloadStream.CopyTo(fileStream);
 					}

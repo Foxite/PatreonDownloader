@@ -53,7 +53,7 @@ namespace PatreonDownloader {
 		public DateTime? CreatedAt { get; set; }
 
 		[JsonProperty("num_responses")]
-		public int ResponseCount { get; }
+		public int ResponseCount { get; set; }
 
 		[JsonProperty("question_type")]
 		public string QuestionText { get; set; }
@@ -65,10 +65,10 @@ namespace PatreonDownloader {
 	[Serializable]
 	public class PostPageIncludedMedia : PostPageIncludedAttributes {
 		[JsonProperty("download_url")]
-		public string DownloadUrl { get; }
+		public string DownloadUrl { get; set; }
 
 		[JsonProperty("file_name")]
-		public string Filename { get; }
+		public string Filename { get; set; }
 
 		[JsonProperty("image_urls")]
 		public ImageUrls ImageUrls { get; set; }
@@ -98,10 +98,10 @@ namespace PatreonDownloader {
 	[Serializable]
 	public class PostPageIncludedReward : PostPageIncludedAttributes {
 		[JsonProperty("amount")]
-		public int Amount { get; }
+		public int Amount { get; set; }
 
 		[JsonProperty("amount_cents")]
-		public int AmountCents { get; }
+		public int AmountCents { get; set; }
 
 		[JsonProperty("created_at")]
 		public DateTime? CreatedAt { get; set; }
