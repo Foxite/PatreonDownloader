@@ -12,33 +12,42 @@ using PatreonDownloader.LinkScraping;
 
 namespace PatreonDownloader {
 	public class Program {
-		private static string s_DataFolder;
+		private static string DataFolder { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PatreonDownloader");
 
 		private static void Main(string[] args) {
-			string sessionToken;
+			string sessionToken = null;
 
 			CookieExtractor[] cookieExtractors = new CookieExtractor[] {
 				new ChromeCookieExtractor(),
 				new FirefoxCookieExtractor()
 			};
 
-			string[] options = new string[cookieExtractors.Length + 1];
-			options[0] = "Manually enter/paste session token";
-			for (int i = 0; i < cookieExtractors.Length; i++) {
-				options[i + 1] = $"Acquire session token from {cookieExtractors[i].Name}";
-			}
-			int choice = Util.ConsoleChoiceMenu("Enter an option:", options);
-			
-			if (choice == 0) {
-				Console.Write("Enter/Paste session token: ");
-				sessionToken = Console.ReadLine();
-			} else {
-				sessionToken = cookieExtractors[choice - 1].GetPatreonSessionToken();
+			while (sessionToken == null) {
+				string[] options = new string[cookieExtractors.Length + 1];
+				options[0] = "Manually paste session token";
+				for (int i = 0; i < cookieExtractors.Length; i++) {
+					options[i + 1] = $"Acquire session token from {cookieExtractors[i].Name}";
+				}
+				int choice = Util.ConsoleChoiceMenu("Enter an option:", options);
+
+				if (choice == 0) {
+					Console.Write("Paste session token: ");
+					sessionToken = Console.ReadLine();
+				} else {
+					try {
+						sessionToken = cookieExtractors[choice - 1].GetPatreonSessionToken();
+					} catch (CookieExtractorException e) {
+						Console.WriteLine("Error: " + e.Message);
+					} catch (Exception e) {
+						File.WriteAllText(Path.Combine(DataFolder, "error.log"), e.ToString());
+						Console.WriteLine("An unknown error has occured. Details have been saved in Documents/PatreonDownloader/error.log. Please forward it to the developer.");
+						Console.ReadKey();
+						return;
+					}
+				}
 			}
 
-			s_DataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PatreonDownloader");
-
-			string backupFile = Path.Combine(s_DataFolder, "posts.json"); // Unfortunately, no SpecialFolder.Downloads.
+			string backupFile = Path.Combine(DataFolder, "posts.json"); // Unfortunately, no SpecialFolder.Downloads.
 
 			var cookieContainer = new CookieContainer();
 			cookieContainer.Add(new Uri("https://www.patreon.com"), new Cookie("session_id", sessionToken));
@@ -46,13 +55,14 @@ namespace PatreonDownloader {
 			using var client = new HttpClient(handler);
 			client.DefaultRequestHeaders.Add("User-Agent", "PatreonDownloader 0.3");
 
-			Directory.CreateDirectory(s_DataFolder);
+			Directory.CreateDirectory(DataFolder);
 
 			if (File.Exists(backupFile)) {
 				List<PostPage> list = JsonConvert.DeserializeObject<List<PostPage>>(File.ReadAllText(backupFile));
 
 				string question = "A backup file exists.";
 
+				string[] options;
 				if (list[^1].Links != null) {
 					options = new string[3];
 					options[2] = "Continue downloading post data where left off";
@@ -67,7 +77,7 @@ namespace PatreonDownloader {
 				options[0] = "Download all images in the backup";
 				options[1] = "Delete the backup file and re-download all post data";
 
-				choice = Util.ConsoleChoiceMenu(question, options);
+				int choice = Util.ConsoleChoiceMenu(question, options);
 
 				switch (choice) {
 					case 0:
@@ -112,7 +122,7 @@ namespace PatreonDownloader {
 				if (media.Any()) {
 					Console.WriteLine($"Downloading media of post {postI}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
 
-					directory = Directory.CreateDirectory(Path.Combine(s_DataFolder, post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)));
+					directory = Directory.CreateDirectory(Path.Combine(DataFolder, post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)));
 
 					foreach (PostPageIncludedMedia item in media) {
 						var response = client.GetAsync(item.ImageUrls.Original).Result;

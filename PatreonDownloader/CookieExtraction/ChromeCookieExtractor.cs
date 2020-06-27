@@ -16,7 +16,12 @@ namespace PatreonDownloader.CookieExtraction {
 		public override string Name => "Chrome";
 
 		public override string GetPatreonSessionToken() {
+			// TODO support for more than 1 profile
 			string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "User Data", "Default", "Cookies");
+
+			if (!File.Exists(dbPath)) {
+				throw new CookieExtractorException("Chrome is not installed.");
+			}
 
 			using var connection = new SqliteConnection($"Data Source={dbPath}");
 
@@ -34,7 +39,7 @@ namespace PatreonDownloader.CookieExtraction {
 				return DecryptWithKey(encryptedData, key, 3);
 			}
 
-			throw new KeyNotFoundException("No suitable cookie was found in Chrome's storage");
+			throw new CookieExtractorException("No suitable cookie was found in Chrome's storage.");
 		}
 
         // https://stackoverflow.com/a/60611673
