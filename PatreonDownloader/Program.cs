@@ -15,99 +15,105 @@ namespace PatreonDownloader {
 		private static string DataFolder { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PatreonDownloader");
 
 		private static void Main(string[] args) {
-			string sessionToken = null;
+			try {
+				string sessionToken = null;
 
-			CookieExtractor[] cookieExtractors = new CookieExtractor[] {
-				new ChromeCookieExtractor(),
-				new FirefoxCookieExtractor()
-			};
+				CookieExtractor[] cookieExtractors = new CookieExtractor[] {
+					new ChromeCookieExtractor(),
+					new FirefoxCookieExtractor()
+				};
 
-			while (sessionToken == null) {
-				string[] options = new string[cookieExtractors.Length + 1];
-				options[0] = "Manually paste session token";
-				for (int i = 0; i < cookieExtractors.Length; i++) {
-					options[i + 1] = $"Acquire session token from {cookieExtractors[i].Name}";
-				}
-				int choice = Util.ConsoleChoiceMenu("Enter an option:", options);
+				while (sessionToken == null) {
+					string[] options = new string[cookieExtractors.Length + 1];
+					options[0] = "Manually paste session token";
+					for (int i = 0; i < cookieExtractors.Length; i++) {
+						options[i + 1] = $"Acquire session token from {cookieExtractors[i].Name}";
+					}
+					int choice = Util.ConsoleChoiceMenu("Enter an option:", options);
 
-				if (choice == 0) {
-					Console.Write("Paste session token: ");
-					sessionToken = Console.ReadLine();
-				} else {
-					try {
-						sessionToken = cookieExtractors[choice - 1].GetPatreonSessionToken();
-					} catch (CookieExtractorException e) {
-						Console.WriteLine("Error: " + e.Message);
-					} catch (Exception e) {
-						File.WriteAllText(Path.Combine(DataFolder, "error.log"), e.ToString());
-						Console.WriteLine("An unknown error has occured. Details have been saved in Documents/PatreonDownloader/error.log. Please forward it to the developer.");
-						Console.ReadKey();
-						return;
+					if (choice == 0) {
+						Console.Write("Paste session token: ");
+						sessionToken = Console.ReadLine();
+					} else {
+						try {
+							sessionToken = cookieExtractors[choice - 1].GetPatreonSessionToken();
+						} catch (CookieExtractorException e) {
+							Console.WriteLine("Error: " + e.Message);
+						}
 					}
 				}
-			}
 
-			string backupFile = Path.Combine(DataFolder, "posts.json"); // Unfortunately, no SpecialFolder.Downloads.
+				string backupFile = Path.Combine(DataFolder, "posts.json"); // Unfortunately, no SpecialFolder.Downloads.
 
-			var cookieContainer = new CookieContainer();
-			cookieContainer.Add(new Uri("https://www.patreon.com"), new Cookie("session_id", sessionToken));
-			using var handler = new HttpClientHandler() { CookieContainer = cookieContainer };
-			using var client = new HttpClient(handler);
-			client.DefaultRequestHeaders.Add("User-Agent", "PatreonDownloader 0.3");
+				var cookieContainer = new CookieContainer();
+				cookieContainer.Add(new Uri("https://www.patreon.com"), new Cookie("session_id", sessionToken));
+				using var handler = new HttpClientHandler() { CookieContainer = cookieContainer };
+				using var client = new HttpClient(handler);
+				client.DefaultRequestHeaders.Add("User-Agent", "PatreonDownloader 0.3");
 
-			Directory.CreateDirectory(DataFolder);
+				Directory.CreateDirectory(DataFolder);
 
-			if (File.Exists(backupFile)) {
-				List<PostPage> list = JsonConvert.DeserializeObject<List<PostPage>>(File.ReadAllText(backupFile));
+				if (File.Exists(backupFile)) {
+					List<PostPage> list = JsonConvert.DeserializeObject<List<PostPage>>(File.ReadAllText(backupFile));
 
-				string question = "A backup file exists.";
+					string question = "A backup file exists.";
 
-				string[] options;
-				if (list[^1].Links != null) {
-					options = new string[3];
-					options[2] = "Continue downloading post data where left off";
-				} else {
-					options = new string[2];
-					question += " The local backup indicates that there are no more pages to download.";
-				}
+					string[] options;
+					if (list[^1].Links != null) {
+						options = new string[3];
+						options[2] = "Continue downloading post data where left off";
+					} else {
+						options = new string[2];
+						question += " The local backup indicates that there are no more pages to download.";
+					}
 
-				question += "\nRe-downloading may be necessary if the backup is too old. Media URLs expire after a certain amount of time.";
-				question += "\nDo you want to:";
+					question += "\nRe-downloading may be necessary if the backup is too old. Media URLs expire after a certain amount of time.";
+					question += "\nDo you want to:";
 
-				options[0] = "Download all images in the backup";
-				options[1] = "Delete the backup file and re-download all post data";
+					options[0] = "Download all images in the backup";
+					options[1] = "Delete the backup file and re-download all post data";
 
-				int choice = Util.ConsoleChoiceMenu(question, options);
+					int choice = Util.ConsoleChoiceMenu(question, options);
 
-				switch (choice) {
-					case 0:
-						Dictionary<string, List<PostPageIncluded>> ppis = new Dictionary<string, List<PostPageIncluded>>();
-						foreach (PostPageIncluded item in list.SelectMany(page => page.Included)) {
-							if (ppis.TryGetValue(item.Id, out List<PostPageIncluded> ppiList)) {
-								ppiList.Add(item);
-							} else {
-								ppis[item.Id] = new List<PostPageIncluded>() { item };
+					switch (choice) {
+						case 0:
+							Dictionary<string, List<PostPageIncluded>> ppis = new Dictionary<string, List<PostPageIncluded>>();
+							foreach (PostPageIncluded item in list.SelectMany(page => page.Included)) {
+								if (ppis.TryGetValue(item.Id, out List<PostPageIncluded> ppiList)) {
+									ppiList.Add(item);
+								} else {
+									ppis[item.Id] = new List<PostPageIncluded>() { item };
+								}
 							}
-						}
 
-						DownloadMedia(client, cookieContainer, list.SelectMany(page => page.Data), ppis);
-						break;
-					case 1:
-						File.Delete(backupFile);
-						DownloadAllPosts(client, 0, null, backupFile);
-						break;
-					case 2:
-						DownloadAllPosts(client, list.Count, list[^1].Links.Next, backupFile);
-						break;
+							DownloadMedia(client, cookieContainer, list.SelectMany(page => page.Data), ppis);
+							break;
+						case 1:
+							File.Delete(backupFile);
+							DownloadAllPosts(client, 0, null, backupFile);
+							break;
+						case 2:
+							DownloadAllPosts(client, list.Count, list[^1].Links.Next, backupFile);
+							break;
+					}
+				} else {
+					Console.WriteLine("No local backup file exists. Downloading all post data to a local json file.");
+					DownloadAllPosts(client, 1, null, backupFile);
 				}
-			} else {
-				Console.WriteLine("No local backup file exists. Downloading all post data to a local json file.");
-				DownloadAllPosts(client, 1, null, backupFile);
+			}
+#if !DEBUG
+			catch (Exception e) {
+				File.WriteAllText(Path.Combine(DataFolder, "error.log"), e.ToString());
+				Console.WriteLine("An unknown error has occured. Details have been saved in Documents/PatreonDownloader/error.log. Please forward it to the developer.");
+			}
+#endif
+			finally {
+				Console.ReadKey();
 			}
 		}
 
 		private static void DownloadMedia(HttpClient client, CookieContainer cookies, IEnumerable<PostPageData> posts, IDictionary<string, List<PostPageIncluded>> inclusions) {
-			LinkDownloader[] downloaders = new[] {
+			LinkDownloader[] downloaders = new LinkDownloader[] {
 				new DropboxDownloader()
 			};
 
@@ -166,10 +172,9 @@ namespace PatreonDownloader {
 			}
 
 			Console.WriteLine("Done.");
-			Console.ReadKey();
 		}
 
-		private static string DownloadAllPosts(HttpClient client, int initialCount, string nextUrl, string backupFile) {
+		private static void DownloadAllPosts(HttpClient client, int initialCount, string nextUrl, string backupFile) {
 			if (nextUrl == null) {
 				Console.Write("Paste URL of posts call: ");
 				nextUrl = Console.ReadLine();
@@ -193,8 +198,6 @@ namespace PatreonDownloader {
 			} while (nextUrl != null);
 
 			Console.WriteLine("Done, all post data has been saved locally. Run the program again to download the media.");
-			Console.ReadKey();
-			return nextUrl;
 		}
 	}
 }
