@@ -50,7 +50,7 @@ namespace PatreonDownloader {
 				cookieContainer.Add(new Uri("https://www.patreon.com"), new Cookie("session_id", sessionToken));
 				using var handler = new HttpClientHandler() { CookieContainer = cookieContainer };
 				using var client = new HttpClient(handler);
-				client.DefaultRequestHeaders.Add("User-Agent", "PatreonDownloader/0.3.1");
+				client.DefaultRequestHeaders.Add("User-Agent", "PatreonDownloader/1.0");
 
 				Directory.CreateDirectory(DataFolder);
 
