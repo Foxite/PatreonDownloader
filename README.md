@@ -11,7 +11,7 @@ The program needs two pieces of information:
 - The link to the /api/posts page for the creator you want to download the content of. This tells the program where to look for posts.
 - Your session token. This allows the program to download everything you have access to. The program can automatically extract this cookie from supported browsers, or you may enter it yourself.
 
-**Do not take this lightly.** Your session token can be used to gain full access to your account. As such, I encourage healthy paranoia when using this program, which is why the full source code is available.
+**Do not take this lightly.** Your session token can be used to gain full access to your account. As such, I encourage healthy paranoia when using this program, which is why the full source code is available. Read the Security heading below for more details.
 
 To actually get the information:
 
@@ -26,6 +26,11 @@ The next time you run it, it will ask you what you want to do with the posts.jso
 
 ## External media
 The program will also attempt to extract links from posts, and if possible, download the files stored at those links. Currently, only Dropbox links are supported. If you want to download external media from other hosting sites, feel free to submit a PR.
+
+## Security
+This program can automatically extract cookies from your browser, which is (correctly) identified as suspicious behaviour by certain antivirus programs. This is why the full source code is available. You can see that only the patreon.com session_id cookie is extracted and only used to authenticate the program with Patreon, and is not sent anywhere else. While the exact URL that the cookie is sent to is based on user input, the code will never send the cookie to any of my servers. Your cookies are safe.
+
+View VirusTotal reports for version 1.0 [here](https://www.virustotal.com/gui/file-analysis/OTFmMGFkNDUxM2JiMjc1ZjhmMjc2NmUzMzVlNmJlOTk6MTU5MzM1OTY0Mg==/detection) (Windows zip file) and [here](https://www.virustotal.com/gui/file/dec5d37af8de554ddc56a9c7a5e412fbd08ff30761d3017fc6627c6068e08411/detection) (Windows executable).
 
 ## Contributing
 Please stick to existing code conventions when contributing.
