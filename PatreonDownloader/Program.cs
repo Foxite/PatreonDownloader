@@ -17,6 +17,8 @@ namespace PatreonDownloader {
 
 		private static void Main(string[] args) {
 			try {
+				Directory.CreateDirectory(DataFolder);
+
 				string sessionToken = null;
 
 				CookieExtractor[] cookieExtractors = new CookieExtractor[] {
@@ -221,7 +223,7 @@ namespace PatreonDownloader {
 
 				nextUrl = page.Links?.Next;
 
-				Thread.Sleep(TimeSpan.FromSeconds(10));
+				Thread.Sleep(TimeSpan.FromSeconds(5));
 			} while (nextUrl != null);
 
 			Console.WriteLine("Done, all post data has been saved locally. Run the program again to download the media.");

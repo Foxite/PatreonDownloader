@@ -24,10 +24,16 @@ namespace PatreonDownloader {
 		public override bool CanConvert(Type objectType) => objectType.IsEnum;
 		public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
 			Dictionary<string, object> dictionaries = GetCache(objectType);
-			return dictionaries[(string) reader.Value];
+			try {
+				return dictionaries[(string) reader.Value];
+			} catch (KeyNotFoundException knfe) {
+				Console.WriteLine("Warning: found unknown data inside the scraped information.");
+				Console.WriteLine(knfe.Message);
+				return existingValue;
+			}
 		}
 
-		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) { 
+		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
 			Dictionary<string, object> dictionaries = GetCache(value.GetType());
 			writer.WriteValue(dictionaries.First(kvp => {
 				return kvp.Value.Equals(value);

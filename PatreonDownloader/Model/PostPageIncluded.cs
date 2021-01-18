@@ -18,6 +18,7 @@ namespace PatreonDownloader {
 			IncludedType.PollChoice => RawAttributes.ToObject<PostPageIncludedPollChoice>(),
 			IncludedType.Goal       => RawAttributes.ToObject<PostPageIncludedGoal>(),
 			IncludedType.Attachment => RawAttributes.ToObject<PostPageIncludedAttachment>(),
+			IncludedType.PostTag    => RawAttributes.ToObject<PostPageIncludedPostTags>(),
 			_ => throw new InvalidOperationException("This should not happen. PostPageIncluded.Type was " + Type.ToString())
 		};
 
@@ -58,6 +59,9 @@ namespace PatreonDownloader {
 
 			[JsonProperty("attachment")]
 			Attachment,
+
+			[JsonProperty("post_tag")]
+			PostTag
 		}
 	}
 }
