@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -41,7 +42,8 @@ namespace PatreonDownloader {
 						try {
 							sessionToken = cookieExtractors[choice - 1].GetPatreonSessionToken();
 						} catch (CookieExtractorException e) {
-							Console.WriteLine("Error: " + e.Message);
+							Console.WriteLine("Could not extract a cookie. Please try another way.");
+							Console.WriteLine(e.Message);
 						}
 					}
 				}
@@ -97,8 +99,8 @@ namespace PatreonDownloader {
 			}
 #if !DEBUG
 			catch (Exception e) {
-				File.WriteAllText(Path.Combine(DataFolder, "error.log"), e.ToString());
-				Console.WriteLine("An unknown error has occured. Details have been saved in Documents/PatreonDownloader/error.log. Please forward it to the developer.");
+				File.WriteAllText(Path.Combine(DataFolder, "error.log"), e.ToStringDemystified());
+				LogError("An unknown error has occured. Details have been saved in Documents/PatreonDownloader/error.log. Please forward it to the developer.");
 			}
 #endif
 			finally {
@@ -147,7 +149,7 @@ namespace PatreonDownloader {
 				IEnumerable<PostPageIncludedMedia> media = post.Relationships.Media.Data.SelectMany(media => inclusions[media.Id]).Select(media => media.Attributes).OfType<PostPageIncludedMedia>();
 
 				if (media.Any()) {
-					Console.WriteLine($"Downloading media of post {postI}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
+					LogInfo($"Downloading media of post {postI}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
 
 					directory = Directory.CreateDirectory(Path.Combine(DataFolder, post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)));
 
@@ -161,30 +163,37 @@ namespace PatreonDownloader {
 				#endregion
 
 				#region Link scraping & downloading
-				HtmlDocument contentHtml = new HtmlDocument();
-				contentHtml.LoadHtml(post.Attributes.Content);
 
-				int linkI = 1;
-				string title = post.Attributes.Title;
-				foreach (var (url, downloader) in
-					from node in contentHtml.DocumentNode.Descendants()
-					where node.Name == "a"
-					let href = node.Attributes.FirstOrDefault(attr => attr.Name == "href")?.Value
-					where href != null
-					let downloader = downloaders.FirstOrDefault(dl => dl.CanDownloadLink(href))
-					where downloader != null
-					select (href, downloader)
-				) {
-					Console.WriteLine($"Downloading link {linkI++} ({downloader.Name}) extracted from post {postI}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
-					directory ??= Directory.CreateDirectory(Path.Combine(
-						Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-						"Posts",
-						post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)
-					));
-					try {
-						downloader.DownloadFiles(client, cookies, url, directory.FullName);
-					} catch (LinkDownloaderException e) {
-						Console.WriteLine("Error: " + e.Message);
+				if (post.Attributes.Content == null) {
+					LogInfo($"Post {postI}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()}) does not have any content. No links can be extracted from it.");
+					LogInfo($"Here's the link if you want to have a look {post.Attributes.PostUrl}");
+					LogInfo("Keep in mind that this link only works if you have access to it. As such, if this turns out to be incorrect, the developer will not be able to fix this.");
+				} else {
+					HtmlDocument contentHtml = new HtmlDocument();
+					contentHtml.LoadHtml(post.Attributes.Content);
+
+					int linkI = 1;
+					string title = post.Attributes.Title;
+					foreach (var (url, downloader) in
+						from node in contentHtml.DocumentNode.Descendants()
+						where node.Name == "a"
+						let href = node.Attributes.FirstOrDefault(attr => attr.Name == "href")?.Value
+						where href != null
+						let downloader = downloaders.FirstOrDefault(dl => dl.CanDownloadLink(href))
+						where downloader != null
+						select (href, downloader)
+					) {
+						LogInfo($"Downloading link {linkI++} ({downloader.Name}) extracted from post {postI}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
+						directory ??= Directory.CreateDirectory(Path.Combine(
+							Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+							"Posts",
+							post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)
+						));
+						try {
+							downloader.DownloadFiles(client, cookies, url, directory.FullName);
+						} catch (LinkDownloaderException e) {
+							LogError(e.Message);
+						}
 					}
 				}
 				#endregion
@@ -196,7 +205,7 @@ namespace PatreonDownloader {
 				downloader.Dispose();
 			}
 
-			Console.WriteLine("Done.");
+			LogInfo("Done.");
 		}
 
 		private static void DownloadAllPosts(HttpClient client, List<PostPage> pages, string backupFile) {
@@ -212,7 +221,7 @@ namespace PatreonDownloader {
 			int pageNumber = pages.Count + 1;
 
 			do {
-				Console.WriteLine($"Retrieving page {pageNumber++}.");
+				LogInfo($"Retrieving page {pageNumber++}.");
 
 				string result = client.GetStringAsync(nextUrl).Result;
 				PostPage page = JsonConvert.DeserializeObject<PostPage>(result);
@@ -226,7 +235,24 @@ namespace PatreonDownloader {
 				Thread.Sleep(TimeSpan.FromSeconds(5));
 			} while (nextUrl != null);
 
-			Console.WriteLine("Done, all post data has been saved locally. Run the program again to download the media.");
+			LogInfo("Done, all post data has been saved locally. Run the program again to download the media.");
+		}
+
+		public enum LogLevel {
+			Debug, Info, Notice, Warning, Error
+		}
+
+		public static void LogDebug  (string message) => Log(LogLevel.Debug,   message);
+		public static void LogInfo   (string message) => Log(LogLevel.Info,    message);
+		public static void LogNotice (string message) => Log(LogLevel.Notice,  message);
+		public static void LogWarning(string message) => Log(LogLevel.Warning, message);
+		public static void LogError  (string message) => Log(LogLevel.Error,   message);
+
+		public static void Log(LogLevel level, string message) {
+			const int LongestLevel = 7; // Warning
+			string logString = $"{DateTime.Now:u} {level,LongestLevel}: {message}";
+			Console.WriteLine(logString);
+			File.AppendAllText(Path.Combine(DataFolder, "output.log"), logString + Environment.NewLine);
 		}
 	}
 }
