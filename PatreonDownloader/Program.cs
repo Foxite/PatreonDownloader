@@ -14,11 +14,30 @@ using PatreonDownloader.LinkScraping;
 
 namespace PatreonDownloader {
 	public class Program {
-		private static string DataFolder { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PatreonDownloader");
+		private static string DataFolder { get; set; }
 
 		private static void Main(string[] args) {
 			try {
+				do {
+					Console.WriteLine("Please enter the full path of the folder where you want to store the downloaded files, or leave it empty to use your Documents folder.");
+					Console.WriteLine("Make sure the directory currently exists. A folder named PatreonDownloader will be created inside it.");
+					DataFolder = Console.ReadLine() ?? "";
+
+					if (DataFolder.Length == 0) {
+						DataFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments); // Unfortunately, no SpecialFolder.Downloads.
+					}
+				} while (!Directory.Exists(DataFolder));
+				
+				DataFolder = Path.Combine(DataFolder, "PatreonDownloader");
+
 				Directory.CreateDirectory(DataFolder);
+				
+				Console.WriteLine("If you want to create an extra folder inside the PatreonDownloader folder, enter its name - otherwise press enter:");
+				string subfolderName = Console.ReadLine() ?? "";
+				if (subfolderName.Length > 0) {
+					DataFolder = Path.Combine(DataFolder, subfolderName);
+					Directory.CreateDirectory(DataFolder);
+				}
 
 				string sessionToken = null;
 
@@ -48,7 +67,7 @@ namespace PatreonDownloader {
 					}
 				}
 
-				string backupFile = Path.Combine(DataFolder, "posts.json"); // Unfortunately, no SpecialFolder.Downloads.
+				string backupFile = Path.Combine(DataFolder, "posts.json");
 
 				var cookieContainer = new CookieContainer();
 				cookieContainer.Add(new Uri("https://www.patreon.com"), new Cookie("session_id", sessionToken));
@@ -104,6 +123,7 @@ namespace PatreonDownloader {
 			}
 #endif
 			finally {
+				Console.WriteLine("The program has finished, press any key to exit.");
 				Console.ReadKey();
 			}
 		}
