@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -13,10 +12,10 @@ using PatreonDownloader.CookieExtraction;
 using PatreonDownloader.LinkScraping;
 
 namespace PatreonDownloader {
-	public class Program {
+	public static class Program {
 		private static string DataFolder { get; set; }
 
-		private static void Main(string[] args) {
+		private static void Main() {
 			try {
 				do {
 					Console.WriteLine("Please enter the full path of the folder where you want to store the downloaded files, or leave it empty to use your Documents folder.");
@@ -138,7 +137,7 @@ namespace PatreonDownloader {
 				}
 			}
 
-			LinkDownloader[] downloaders = new LinkDownloader[] {
+			var downloaders = new LinkDownloader[] {
 				new DropboxDownloader()
 			};
 
@@ -163,19 +162,24 @@ namespace PatreonDownloader {
 					postI++;
 					continue;
 				}
-				DirectoryInfo directory = null;
+				
+				DirectoryInfo directory;
+
+				// Used to avoid calling CreateDirectory multiple times.
+				DirectoryInfo GetPostMediaDirectory() {
+					directory = Directory.CreateDirectory(Path.Combine(DataFolder, post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)));
+					return directory;
+				}
 
 				#region Media downloading
-				IEnumerable<PostPageIncludedMedia> media = post.Relationships.Media.Data.SelectMany(media => inclusions[media.Id]).Select(media => media.Attributes).OfType<PostPageIncludedMedia>();
+				List<PostPageIncludedMedia> media = post.Relationships.Media.Data.SelectMany(item => inclusions[item.Id]).Select(item => item.Attributes).OfType<PostPageIncludedMedia>().ToList();
 
 				if (media.Any()) {
 					LogInfo($"Downloading media of post {postI}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
 
-					directory = Directory.CreateDirectory(Path.Combine(DataFolder, post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)));
-
 					foreach (PostPageIncludedMedia item in media) {
-						var response = client.GetAsync(item.ImageUrls.Original).Result;
-						using FileStream fileStream = File.Create(Path.Combine(directory.FullName, Util.SanitizeFilename(item.Filename ?? Path.GetFileName(new Uri(item.DownloadUrl).GetLeftPart(UriPartial.Path)))));
+						HttpResponseMessage response = client.GetAsync(item.ImageUrls.Original).Result;
+						using FileStream fileStream = File.Create(Path.Combine(GetPostMediaDirectory().FullName, Util.SanitizeFilename(item.Filename ?? Path.GetFileName(new Uri(item.DownloadUrl).GetLeftPart(UriPartial.Path)))));
 						using Stream downloadStream = response.Content.ReadAsStreamAsync().Result;
 						downloadStream.CopyTo(fileStream);
 					}
@@ -189,12 +193,11 @@ namespace PatreonDownloader {
 					LogInfo($"Here's the link if you want to have a look {post.Attributes.PostUrl}");
 					LogInfo("Keep in mind that this link only works if you have access to it. As such, if this turns out to be incorrect, the developer will not be able to fix this.");
 				} else {
-					HtmlDocument contentHtml = new HtmlDocument();
+					var contentHtml = new HtmlDocument();
 					contentHtml.LoadHtml(post.Attributes.Content);
 
 					int linkI = 1;
-					string title = post.Attributes.Title;
-					foreach (var (url, downloader) in
+					foreach ((string url, LinkDownloader downloader) in
 						from node in contentHtml.DocumentNode.Descendants()
 						where node.Name == "a"
 						let href = node.Attributes.FirstOrDefault(attr => attr.Name == "href")?.Value
@@ -204,13 +207,9 @@ namespace PatreonDownloader {
 						select (href, downloader)
 					) {
 						LogInfo($"Downloading link {linkI++} ({downloader.Name}) extracted from post {postI}: {post.Attributes.Title} ({post.Attributes.PublishedAt.ToShortDateString()})");
-						directory ??= Directory.CreateDirectory(Path.Combine(
-							Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-							"Posts",
-							post.Attributes.PublishedAt.ToString("yyyy-MM-dd") + " " + Util.SanitizeFilename(post.Attributes.Title)
-						));
+						
 						try {
-							downloader.DownloadFiles(client, cookies, url, directory.FullName);
+							downloader.DownloadFiles(client, cookies, url, GetPostMediaDirectory().FullName);
 						} catch (LinkDownloaderException e) {
 							LogError(e.Message);
 						}
@@ -221,6 +220,7 @@ namespace PatreonDownloader {
 				postI++;
 			}
 
+			// ReSharper disable once SuspiciousTypeConversion.Global
 			foreach (IDisposable downloader in downloaders.OfType<IDisposable>()) {
 				downloader.Dispose();
 			}
@@ -244,7 +244,7 @@ namespace PatreonDownloader {
 				LogInfo($"Retrieving page {pageNumber++}.");
 
 				string result = client.GetStringAsync(nextUrl).Result;
-				PostPage page = JsonConvert.DeserializeObject<PostPage>(result);
+				var page = JsonConvert.DeserializeObject<PostPage>(result);
 
 				pages.Add(page);
 
@@ -269,8 +269,8 @@ namespace PatreonDownloader {
 		public static void LogError  (string message) => Log(LogLevel.Error,   message);
 
 		public static void Log(LogLevel level, string message) {
-			const int LongestLevel = 7; // Warning
-			string logString = $"{DateTime.Now:u} {level,LongestLevel}: {message}";
+			const int longestLevel = 7; // Warning
+			string logString = $"{DateTime.Now:u} {level,longestLevel}: {message}";
 			Console.WriteLine(logString);
 			File.AppendAllText(Path.Combine(DataFolder, "output.log"), logString + Environment.NewLine);
 		}

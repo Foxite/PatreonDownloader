@@ -9,6 +9,10 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
 
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Ben.Demystifier" Version="0.3.0" />
     <PackageReference Include="BouncyCastle.Crypto.dll" Version="1.8.1" />
